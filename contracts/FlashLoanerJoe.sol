@@ -2,54 +2,45 @@
 pragma solidity ^0.8.0;
 
 import './UniswapV2Library.sol';
-import './interfaces/IUniswapV2Router02.sol';
 import './interfaces/IUniswapV2Pair.sol';
 import './interfaces/IERC20.sol';
+import './interfaces/IPangolinFactory.sol';
 
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
-
-import 'hardhat/console.sol';
 
 contract FlashLoanerJoe {
 
   using SafeMath for uint;
   address immutable factory;
-  IUniswapV2Router02 immutable pangolinRouter;
-  address immutable routerAddress;
-  address owner;
-
-  constructor(address _factory, address _pangolinRouter) {
+  IPangolinFactory immutable pangolinFactory;
+ 
+  constructor(address _factory, address _pangolinFactory) {
     factory = _factory;  
-    pangolinRouter = IUniswapV2Router02(_pangolinRouter);
-    routerAddress = _pangolinRouter;
-    owner = msg.sender;
+    pangolinFactory = IPangolinFactory(_pangolinFactory);
   }
 
   function joeCall(address _sender, uint _amount0, uint _amount1, bytes calldata _data) external {
-      address[] memory path = new address[](2);
-      uint amountToken = _amount0 == 0 ? _amount1 : _amount0;
- 
-      address token0 = IUniswapV2Pair(msg.sender).token0();
-      address token1 = IUniswapV2Pair(msg.sender).token1();
-  
-      require(msg.sender == UniswapV2Library.pairFor(factory, token0, token1), "Unauthorized"); 
+      bool zero = _amount0 == 0 ? true : false;
+      
+      address tokenIn = zero ? IUniswapV2Pair(msg.sender).token1() : IUniswapV2Pair(msg.sender).token0();
 
-      path[0] = _amount0 == 0 ? token1 : token0;
-      path[1] = _amount0 == 0 ? token0 : token1;
+      address tokenOut =zero ? IUniswapV2Pair(msg.sender).token0() : IUniswapV2Pair(msg.sender).token1();
 
-      IERC20 token = IERC20(_amount0 == 0 ? token1 : token0);
-  
-      (uint reserveIn, uint reserveOut) = UniswapV2Library.getReserves(factory, (_amount0 == 0 ? token0 : token1), (_amount0 == 0 ? token1 : token0));
-      
-      token.approve(routerAddress, amountToken);
-      
-      uint amountRequired = UniswapV2Library.getAmountIn(amountToken, reserveIn, reserveOut);
-      
-      pangolinRouter.swapTokensForExactTokens(amountRequired, amountToken, path, msg.sender, block.timestamp);
+      (uint reserveIn, uint reserveOut) = UniswapV2Library.getReserves(factory, tokenOut, tokenIn);
 
-      token.transfer(_sender, token.balanceOf(address(this)));
+      uint joeAmountRequired = UniswapV2Library.getAmountIn((zero ? _amount1 : _amount0), reserveIn, reserveOut);
       
+      IUniswapV2Pair pool = IUniswapV2Pair(pangolinFactory.getPair(tokenIn, tokenOut));
+      (reserveIn, reserveOut,) = pool.getReserves();
+
+      uint panIn = UniswapV2Library.getAmountIn(joeAmountRequired, (zero ? reserveOut : reserveIn), (zero ? reserveIn : reserveOut));
+      
+      IERC20(tokenIn).transfer(address(pool), panIn);
+
+      pool.swap((zero ? joeAmountRequired : 0), (zero ? 0 : joeAmountRequired), msg.sender, new bytes(0));
+      IERC20(tokenIn).transfer(_sender, IERC20(tokenIn).balanceOf(address(this)));
   }
+ 
 
 
 }

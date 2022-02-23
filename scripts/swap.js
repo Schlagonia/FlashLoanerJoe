@@ -7,7 +7,7 @@ const { ethers } = require("hardhat");
 const hre = require("hardhat");
 const pairAbi = require('./pair.json')
 
-// cly block 11000534
+// cly block 11000534   11274362
 //pefi 11002626
 
 async function main() {
@@ -245,15 +245,20 @@ async function main() {
     const cly = '0xec3492a2508ddf4fdc0cd76f31f340b30d1793e6';
     const pefiAddress = '0xe896cdeaac9615145c0ca09c8cd5c25bced6384c';
     const one = '1000000000000000000';
-    const two = '30000000000000000000'
+    const two = '115000000000000000000'
+    const three = '95000000'
     //const two = '10000000000000000000'
 
     const clyPair = '0x0B2777b0c55AEaAeb56E86B6eEFa6cC2Cfa00e07';
     const pefiPair = '0xb78c8238bD907c42BE45AeBdB4A8C8a5D7B49755';
     const ptpPair = '0xCDFD91eEa657cc2701117fe9711C9a4F61FEED23'
+    const usdcePair = '0xA389f9430876455C36478DeEa9769B7Ca4E3DDB1';
+    const savaxPair = '0x4b946c91C2B1a7d7C40FB3C130CdfBaf8389094d';
+    const joePair = '0x454E67025631C065d3cFAD6d71E6892f74487a15';
     // We get the contract to deploy
     const joeFactory = '0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10';
     const pangolinFactory = '0xefa94DE7a4656D787667C749f7E1223D71E9FD88';
+    const sushiFactory = '0x4Fe4D8b01A56706Bc6CaD26E8C59D0C7169976b3'
   const pangolinRouter = '0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106';
 
   // We get the contract to deploy
@@ -270,21 +275,21 @@ async function main() {
 
     const signer = await ethers.provider.getSigner("0xbACe4786dc66623bc7506FF85Dc0a5E6466EB74D");
 
-    const Wavax = new ethers.Contract(wavax, abi, signer);
+    //const Wavax = new ethers.Contract(wavax, abi, signer);
     //const Usdc = new ethers.Contract(usdc, abi, signer);
-    const Cly = new ethers.Contract(cly, abi, signer)
-    const JoePair = new ethers.Contract(ptpPair, pairAbi, signer);
-    console.log("initiated")
+    //const Cly = new ethers.Contract(cly, abi, signer)
+    const JoePair = new ethers.Contract(clyPair, pairAbi, signer);
+    console.log("initiated", JoePair.address)
 
-    const reserves = await JoePair.getReserves();
-    const price = reserves[1] / reserves[0]
-    console.log(price);
+    //const reserves = await JoePair.getReserves();
+    //const price = reserves[1] / reserves[0]
+    //console.log(price);
 
-    console.log(await signer.getBalance())
-
+   // console.log(await signer.getBalance())
+   
     const gasLimit = await JoePair.estimateGas.swap(
         0,
-        one,
+        two,
         flashLoaner.address,
         ethers.utils.toUtf8Bytes('1'),
       );
@@ -299,7 +304,7 @@ async function main() {
 
     let tx = await JoePair.connect(signer).swap(
         0,
-        one,
+        two,
         flashLoaner.address,
         ethers.utils.toUtf8Bytes('1'), options
       );
